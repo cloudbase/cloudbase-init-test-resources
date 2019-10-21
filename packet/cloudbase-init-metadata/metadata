@@ -1,0 +1,16 @@
+{
+   "id":"2885032e-61a8-4786-bd26-7b2e2e6ba1ea",
+   "hostname":"packet",
+   "iqn":"iqn.2017-11.net.packet:device.2885032e",
+   "operating_system":{
+      "slug":"ubuntu_16_04",
+      "distro":"ubuntu",
+      "version":"16.04",
+      "license_activation":{
+         "state":"unlicensed"
+      }
+   },
+   "ssh_keys":[
+      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDp6TTydco9e6c0a+kqrITGdeMoAJrK3yFknvvp8g4PTPFSCAWhlQ2xQYaLRyHw4ytHdcubvffh2dtt7XlgUpPlrc1SaaB0PbkmZt5r2opMiC1Yx00Wd9YbgOK6aFAHkovFnbTQlyhBomIY0j55EkfuUibALeK5qPMW3bNldqkZTXtX6goBPdIgNoXsvSfeDnmsVYVZzoNAMll74ryeJtiRJQUUEbd2VU5yZiuBW0EWLCImfb8L6FmVfot5lHII1HBhKHfRwJtapucdkIYEpIc1q3w26Jh/TwiCl8474dTOXn50v12OqKeQKCdKwNJnwQlvm772ZZSu0k4WVcsBDDhr root@localhost.localdomain\n"
+   ]
+}
