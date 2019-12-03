@@ -1,5 +1,41 @@
-#ps1
-
-mkdir C:\helloworld
-
-exit 0
+#cloud-config
+#groups:
+#    -
+#        windows:
+#            - Administrator
+#    - cloud-users
+#users:
+#    -
+#        name: foobar
+#        gecos: 'Foo B. Bar'
+#        primary_group: cloud-users
+#        groups: windows
+write_files:
+    -
+        encoding: b64
+        content: CiMgVGhpcyBmaWxlIGNvbnRyb2xzIHRoZSBzdGF0ZSBvZiBTRUxpbnV4
+        owner: Administrator
+        path: 'C:\test_file'
+        permissions: '0644'
+    -
+        content: "# Example ps1 file\necho 'test'\n"
+        path: 'C:\test_append.ps1'
+        permissions: '0644'
+    -
+        content: "added to file\n"
+        path: 'C:\test_append.ps1'
+        permissions: '0644'
+        append: true
+runcmd:
+    -
+        - dir
+        - 'c:\'
+    - 'mkdir c:\runcmd'
+ntp:
+    enabled: true
+    pools:
+        - 0.int.pool.ntp.org
+        - 1.int.pool.ntp.org
+        - ntp.myorg.org
+    servers:
+        - ntp.server.local
