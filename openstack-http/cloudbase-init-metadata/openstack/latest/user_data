@@ -35,7 +35,5 @@ ntp:
     enabled: true
     pools:
         - 0.int.pool.ntp.org
-        - 1.int.pool.ntp.org
-        - ntp.myorg.org
     servers:
-        - ntp.server.local
+        - 1.int.pool.ntp.org
