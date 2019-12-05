@@ -2,13 +2,13 @@
 groups:
     -
         windows:
-            - Administrator
+            - Admin
     - cloud-users
 
 users:
     -
-        name: foobar
-        gecos: 'Foo B. Bar'
+        name: cloud-config-user
+        gecos: 'Created by cloudbase-init'
         primary_group: cloud-users
         groups: windows
 
@@ -16,7 +16,6 @@ write_files:
     -
         encoding: b64
         content: CiMgVGhpcyBmaWxlIGNvbnRyb2xzIHRoZSBzdGF0ZSBvZiBTRUxpbnV4
-        owner: Administrator
         path: 'C:\test_file'
         permissions: '0644'
     -
