@@ -1,15 +1,17 @@
 #cloud-config
-#groups:
-#    -
-#        windows:
-#            - Administrator
-#    - cloud-users
-#users:
-#    -
-#        name: foobar
-#        gecos: 'Foo B. Bar'
-#        primary_group: cloud-users
-#        groups: windows
+groups:
+    -
+        windows:
+            - Administrator
+    - cloud-users
+
+users:
+    -
+        name: foobar
+        gecos: 'Foo B. Bar'
+        primary_group: cloud-users
+        groups: windows
+
 write_files:
     -
         encoding: b64
@@ -34,6 +36,6 @@ runcmd:
 ntp:
     enabled: true
     pools:
-        - 0.int.pool.ntp.org
+        - 1.pool.ntp.org
     servers:
-        - 1.int.pool.ntp.org
+        - 0.pool.ntp.org
