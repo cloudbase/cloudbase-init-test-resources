@@ -3,8 +3,7 @@ $ErrorActionPreference = "Stop"
 
 Import-Module "${here}/ini.psm1"
 
-$global:metadataService = "empty"
-$cloudbaseInitRegistryPath = "HKLM:\SOFTWARE\Cloudbase Solutions\Cloudbase-Init"
+$global:cloudbaseInitRegistryPath = "HKLM:\SOFTWARE\Cloudbase Solutions\Cloudbase-Init\b9517879-4e93-4a1a-9073-4ae0ddfac27c\Plugins"
 
 
 function before.cloudbaseinit.plugins.common.mtu.MTUPlugin {
@@ -107,55 +106,114 @@ function before.cloudbaseinit.plugins.common.trim.TrimConfigPlugin {
 function after.cloudbaseinit.plugins.common.trim.TrimConfigPlugin {
 
 }
+function before.cloudbaseinit.plugins.windows.createuser.CreateUserPlugin {
+
+}
+function after.cloudbaseinit.plugins.windows.createuser.CreateUserPlugin {
+
+}
+
+function before.cloudbaseinit.plugins.common.sshpublickeys.SetUserSSHPublicKeysPlugin{
+
+}
+function after.cloudbaseinit.plugins.common.sshpublickeys.SetUserSSHPublicKeysPlugin{
+
+}
+
+function before.cloudbaseinit.plugins.common.setuserpassword.SetUserPasswordPlugin {
+
+}
+function after.cloudbaseinit.plugins.common.setuserpassword.SetUserPasswordPlugin {
+
+}
+
+function before.cloudbaseinit.plugins.windows.winrmcertificateauth.ConfigWinRMCertificateAuthPlugin {
+
+}
+function after.cloudbaseinit.plugins.windows.winrmcertificateauth.ConfigWinRMCertificateAuthPlugin {
+
+}
+
+
+function prepare.empty {
+    # NOOP
+}
+
+function prepare.openstack {
+    pushd "$here/../$($env:CLOUD)"
+        try {
+            Dismount-DiskImage -ErrorAction SilentlyContinue (Resolve-Path "../cloudbase-init-config-drive.iso")
+            Remove-Item -Force -ErrorAction SilentlyContinue "../cloudbase-init-config-drive.iso"
+        } catch {}
+        try {
+            & "$here/../bin/mkisofs.exe" -o "../cloudbase-init-config-drive.iso" -ignore-error -ldots -allow-lowercase -allow-multidot -l -publisher "cbsl" -quiet -J -r -V "config-2" "cloudbase-init-metadata" 2>&1
+        } catch {}
+        Mount-DiskImage -ImagePath (Resolve-Path "../cloudbase-init-config-drive.iso") | Out-Null
+        Get-PsDrive | Out-Null
+    popd
+}
 
 BeforeDiscovery {
-    $global:metadataService | Should -Be "empty"
-    $metadataServiceConfigFile = Resolve-Path "$here/../$metadataService/cloudbase-init.conf"
+    $env:CLOUD | Should -Not -Be $null
+    $metadataServiceConfigFile = Resolve-Path "$here/../$($env:CLOUD)/cloudbase-init.conf"
     $pluginList = Get-IniFileValue -Path $metadataServiceConfigFile -Section "DEFAULT" `
                                       -Key "plugins" `
                                       -Default ""
     $pluginList = $pluginList.Split(",")
+    & "prepare.$($ENV:CLOUD)"
 }
 
 Describe "TestVerifyBeforeAllPlugins" {
-    foreach ($plugin in $pluginList) {
+    Context "Verify state before running plugin" -ForEach $pluginList {
+        $plugin = $_
         if (!$plugin) {
             return
         }
-        Context "Verify state for plugin ${plugin}"{
-            & "before.${plugin}"
+        & "before.${plugin}"
 
-            It "Checks for Registry Key state ${plugin}" {
-                $propertyName = "TEST"
-                $propertyValue = "NOT_INITIALIZED"
-                try {
-                    $propertyValue = Get-ItemProperty -Path $cloudbaseInitRegistryPath -Name $propertyNameopertyName -ErrorAction "Stop"
-                } catch {
-                    $propertyValue = "NOT_EXISTENT"
-                }
-                $propertyValue | Should -BeExactly "NOT_EXISTENT"
+        $propertyName = $_.split(".")[-1]
+        It "Checks for Registry Key state ${plugin} and property ${propertyName}" {
+            $propertyName = $_.split(".")[-1]
+            $propertyValue = "NOT_INITIALIZED"
+            try {
+                $propertyValue = Get-ItemProperty -Path $global:cloudbaseInitRegistryPath -Name $propertyName -ErrorAction "Stop" | Select-Object -ExpandProperty $propertyName
+            } catch {
+                $propertyValue = "NOT_EXISTENT"
             }
+            $propertyValue | Should -BeExactly "NOT_EXISTENT"
         }
     }
 }
 
 Describe "TestVerifyAfterAllPlugins" {
-    $pluginList | ForEach-Object {
+    Context "Verify state after running plugin" -ForEach $pluginList {
         $plugin = $_
         if (!$plugin) {
             return
         }
         & "after.${plugin}"
 
-        It "Checks for Registry Key state ${plugin}" {
-            $propertyName = "TEST"
-            $propertyValue = "NOT_INITIALIZED"
-            try {
-                $propertyValue = Get-ItemProperty -Path $cloudbaseInitRegistryPath -Name $propertyNameopertyName -ErrorAction "Stop"
-            } catch {
-                $propertyValue = "NOT_EXISTENT"
+        if ($env:CLOUD -ne "empty") {
+            $propertyName = $_.split(".")[-1]
+            It "Checks for Registry Key state ${plugin} and property ${propertyName}" {
+                $propertyName = $_.split(".")[-1]
+                $propertyValue = "NOT_INITIALIZED"
+                try {
+                    $propertyValue = Get-ItemProperty -Path $global:cloudbaseInitRegistryPath -Name $propertyName -ErrorAction "Stop" | Select-Object -ExpandProperty $propertyName
+                } catch {
+                    $propertyValue = "NOT_EXISTENT"
+                }
+                $expectedValue = 1
+                # plugins that run at every boot
+                if ($propertyName -eq "ExtendVolumesPlugin") {
+                    $expectedValue = 2
+                }
+                # plugins that run in the PRE_METADATA_DISCOVERY or PRE_NETWORKING stage
+                if ($propertyName -in @("MTUPlugin", "NTPClientPlugin")) {
+                    $expectedValue = "NOT_EXISTENT"
+                }
+                $propertyValue | Should -BeExactly $expectedValue
             }
-            $propertyValue | Should -BeExactly "NOT_EXISTENT"
         }
     }
 }
