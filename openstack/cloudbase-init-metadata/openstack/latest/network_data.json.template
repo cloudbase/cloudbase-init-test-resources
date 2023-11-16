@@ -1,0 +1,29 @@
+{
+  "services": [],
+  "networks": [
+    {
+      "network_id": "9bdbed09-b705-43c0-90e4-8ea07dc77656",
+      "type": "ipv4_dhcp",
+      "services": [],
+      "netmask": "255.255.0.0",
+      "link": "cloud",
+      "routes": [
+        {
+          "netmask": "0.0.0.0",
+          "network": "0.0.0.0",
+          "gateway": "10.1.0.1"
+        }
+      ],
+      "ip_address": "REPLACE_IP_ADDRESS",
+      "id": "network0"
+    }
+  ],
+  "links": [
+    {
+      "ethernet_mac_address": "REPLACE_MAC_ADDRESS",
+      "type": "ovs",
+      "id": "cloud",
+      "vif_id": "c33c84bf-e986-468c-9b06-0a4bdd54afe8"
+    }
+  ]
+}
