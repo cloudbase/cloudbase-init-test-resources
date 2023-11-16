@@ -3,7 +3,12 @@ $ErrorActionPreference = "Stop"
 
 Import-Module "${here}/ini.psm1"
 
-$global:cloudbaseInitRegistryPath = "HKLM:\SOFTWARE\Cloudbase Solutions\Cloudbase-Init\b9517879-4e93-4a1a-9073-4ae0ddfac27c\Plugins"
+$REG_KEY_WOW_FOLDER = "WOW6432Node\"
+$REG_KEY_FOLDER = ""
+if ($ENV:TEST_ARCHITECTURE -eq "x86") {
+    $REG_KEY_FOLDER = $REG_KEY_WOW_FOLDER
+}
+$global:CLOUDBASE_INIT_REGISTRY_PATH = "HKLM:\SOFTWARE\${REG_KEY_FOLDER}Cloudbase Solutions\Cloudbase-Init\b9517879-4e93-4a1a-9073-4ae0ddfac27c\Plugins"
 
 
 function before.cloudbaseinit.plugins.common.mtu.MTUPlugin {
@@ -267,7 +272,7 @@ Describe "TestVerifyBeforeAllPlugins" {
             $propertyName = $_.split(".")[-1]
             $propertyValue = "NOT_INITIALIZED"
             try {
-                $propertyValue = Get-ItemProperty -Path $global:cloudbaseInitRegistryPath -Name $propertyName -ErrorAction "Stop" | Select-Object -ExpandProperty $propertyName
+                $propertyValue = Get-ItemProperty -Path $global:CLOUDBASE_INIT_REGISTRY_PATH -Name $propertyName -ErrorAction "Stop" | Select-Object -ExpandProperty $propertyName
             } catch {
                 $propertyValue = "NOT_EXISTENT"
             }
@@ -290,7 +295,7 @@ Describe "TestVerifyAfterAllPlugins" {
                 $propertyName = $_.split(".")[-1]
                 $propertyValue = "NOT_INITIALIZED"
                 try {
-                    $propertyValue = Get-ItemProperty -Path $global:cloudbaseInitRegistryPath -Name $propertyName -ErrorAction "Stop" | Select-Object -ExpandProperty $propertyName
+                    $propertyValue = Get-ItemProperty -Path $global:CLOUDBASE_INIT_REGISTRY_PATH -Name $propertyName -ErrorAction "Stop" | Select-Object -ExpandProperty $propertyName
                 } catch {
                     $propertyValue = "NOT_EXISTENT"
                 }
