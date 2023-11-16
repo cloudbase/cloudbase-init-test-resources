@@ -11,6 +11,8 @@ function before.cloudbaseinit.plugins.common.mtu.MTUPlugin {
 }
 function after.cloudbaseinit.plugins.common.mtu.MTUPlugin {
     # NOOP
+    # MTU plugin retrieves the data from DHCP and is not available
+    # in the test environment
 }
 
 
@@ -71,23 +73,98 @@ function after.cloudbaseinit.plugins.windows.bootconfig.BootStatusPolicyPlugin {
 }
 
 function before.cloudbaseinit.plugins.common.sethostname.SetHostNamePlugin {
-
+    # NOOP
 }
 function after.cloudbaseinit.plugins.common.sethostname.SetHostNamePlugin {
-
+    # NOOP
+    # SetHostNamePlugin needs a reboot and the reboot is not available
+    # on the test environment
 }
-function before.cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin {
 
+function before.cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin {
+    # NOOP
 }
 function after.cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin {
-
+    # NOOP
+    # ExtendVolumesPlugin needs a disk that has empty unpartitioned space,
+    # which is not available on the test environment
 }
-function before.cloudbaseinit.plugins.common.userdata.UserDataPlugin {
 
+function before.cloudbaseinit.plugins.common.userdata.UserDataPlugin {
+    It "UserDataPlugin has a clean environment" {
+        {
+            $out = net.exe localgroup "windows" 2>&1
+            if ($LASTEXITCODE) {
+                throw "Group not found"
+            }
+        } | Should -Throw
+
+        {
+            $out = net.exe localgroup "cloud-users" 2>&1
+            if ($LASTEXITCODE) {
+                throw "Group not found"
+            }
+        } | Should -Throw
+
+        {
+            $out = net.exe user "cloud-config-user" 2>&1
+            if ($LASTEXITCODE) {
+                throw "User not found"
+            }
+        } | Should -Throw
+
+        { Get-Content -Raw -Path "c:\test_file" -ErrorAction Stop } | Should -Throw
+        { Get-Content -Raw -Path "c:\test_append.ps1" -ErrorAction Stop } | Should -Throw
+        { Get-ChildItem -Path "c:\runcmd" -ErrorAction Stop } | Should -Throw
+    }
 }
 function after.cloudbaseinit.plugins.common.userdata.UserDataPlugin {
+    It "UserDataPlugin created windows group" {
+        {
+            $out = net.exe localgroup "windows" 2>&1
+            if ($LASTEXITCODE) {
+                throw "Group not found"
+            }
+        } | Should -Not -Throw
+    }
 
+    It "UserDataPlugin created cloud-users group" {
+        {
+            $out = net.exe localgroup "cloud-users" 2>&1
+            if ($LASTEXITCODE) {
+                throw "Group not found"
+            }
+        } | Should -Not -Throw
+    }
+
+    It "UserDataPlugin created cloud-config-user user" {
+        {
+            $out = net.exe user "cloud-config-user" 2>&1
+            if ($LASTEXITCODE) {
+                throw "User not found"
+            }
+        } | Should -Not -Throw
+    }
+
+    It "UserDataPlugin created file c:\test_file" {
+        {
+            Get-Content -Raw -Path "c:\test_file" -ErrorAction Stop
+        } | Should -Not -Throw
+    }
+
+    It "UserDataPlugin created file c:\test_append" {
+        {
+            Get-Content -Raw -Path "c:\test_append.ps1" -ErrorAction Stop
+        } | Should -Not -Throw
+    }
+
+    It "UserDataPlugin created directory c:\runcmd" {
+        {
+            Get-ChildItem -Path "c:\runcmd" -ErrorAction Stop
+        } | Should -Not -Throw
+    }
 }
+
 function before.cloudbaseinit.plugins.windows.winrmlistener.ConfigWinRMListenerPlugin {
 
 }
@@ -107,10 +184,24 @@ function after.cloudbaseinit.plugins.common.trim.TrimConfigPlugin {
 
 }
 function before.cloudbaseinit.plugins.windows.createuser.CreateUserPlugin {
-
+    It "CreateUserPlugin has a clean environment" {
+        {
+            $out = net.exe user "Admin" 2>&1
+            if ($LASTEXITCODE) {
+                throw "User not found"
+            }
+        } | Should -Throw
+    }
 }
 function after.cloudbaseinit.plugins.windows.createuser.CreateUserPlugin {
-
+    It "CreateUserPlugin created cloud-config-user user" {
+        {
+            $out = net.exe user "Admin" 2>&1
+            if ($LASTEXITCODE) {
+                throw "User not found"
+            }
+        } | Should -Not -Throw
+    }
 }
 
 function before.cloudbaseinit.plugins.common.sshpublickeys.SetUserSSHPublicKeysPlugin{
