@@ -194,7 +194,7 @@ function before.cloudbaseinit.plugins.windows.createuser.CreateUserPlugin {
     }
 }
 function after.cloudbaseinit.plugins.windows.createuser.CreateUserPlugin {
-    It "CreateUserPlugin created cloud-config-user user" {
+    It "CreateUserPlugin created Admin user" {
         {
             $out = net.exe user "Admin" 2>&1
             if ($LASTEXITCODE) {
