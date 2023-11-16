@@ -8,7 +8,7 @@ $REG_KEY_FOLDER = ""
 if ($ENV:TEST_ARCHITECTURE -eq "x86") {
     $REG_KEY_FOLDER = $REG_KEY_WOW_FOLDER
 }
-$global:CLOUDBASE_INIT_REGISTRY_PATH = "HKLM:\SOFTWARE\${REG_KEY_WOW_FOLDER}Cloudbase Solutions\Cloudbase-Init\b9517879-4e93-4a1a-9073-4ae0ddfac27c\Plugins"
+$global:CLOUDBASE_INIT_REGISTRY_PATH = "HKLM:\SOFTWARE\${REG_KEY_FOLDER}Cloudbase Solutions\Cloudbase-Init\b9517879-4e93-4a1a-9073-4ae0ddfac27c\Plugins"
 
 
 function before.cloudbaseinit.plugins.common.mtu.MTUPlugin {
