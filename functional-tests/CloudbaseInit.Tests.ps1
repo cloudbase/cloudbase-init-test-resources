@@ -271,6 +271,20 @@ function prepare.openstack {
     popd
 }
 
+function before.cloudbaseinit.plugins.windows.bootconfig.BCDConfigPlugin {
+    # TBD
+}
+function after.cloudbaseinit.plugins.windows.bootconfig.BCDConfigPlugin {
+    # TBD
+}
+
+function before.cloudbaseinit.plugins.windows.bootconfig.BootStatusPolicyPlugin {
+    # TBD
+}
+function after.cloudbaseinit.plugins.windows.bootconfig.BootStatusPolicyPlugin {
+    # TBD
+}
+
 function prepare.nocloud {
     pushd "$here/../$($env:CLOUD)"
         try {
