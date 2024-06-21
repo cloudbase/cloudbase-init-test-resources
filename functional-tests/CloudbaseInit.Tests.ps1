@@ -297,6 +297,12 @@ BeforeDiscovery {
 }
 
 Describe "TestVerifyBeforeAllPlugins" {
+    $env:CLOUD | Should -Not -Be $null
+    $metadataServiceConfigFile = Resolve-Path "$here/../$($env:CLOUD)/cloudbase-init.conf"
+    $pluginList = Get-IniFileValue -Path $metadataServiceConfigFile -Section "DEFAULT" `
+                                      -Key "plugins" `
+                                      -Default ""
+    $pluginList = $pluginList.Split(",")
     Context "Verify state before running plugin" -ForEach $pluginList {
         $plugin = $_
         if (!$plugin) {
@@ -319,6 +325,12 @@ Describe "TestVerifyBeforeAllPlugins" {
 }
 
 Describe "TestVerifyAfterAllPlugins" {
+    $env:CLOUD | Should -Not -Be $null
+    $metadataServiceConfigFile = Resolve-Path "$here/../$($env:CLOUD)/cloudbase-init.conf"
+    $pluginList = Get-IniFileValue -Path $metadataServiceConfigFile -Section "DEFAULT" `
+                                      -Key "plugins" `
+                                      -Default ""
+    $pluginList = $pluginList.Split(",")
     Context "Verify state after running plugin" -ForEach $pluginList {
         $plugin = $_
         if (!$plugin) {
