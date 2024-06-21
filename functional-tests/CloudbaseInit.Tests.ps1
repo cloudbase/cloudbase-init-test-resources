@@ -20,7 +20,6 @@ function after.cloudbaseinit.plugins.common.mtu.MTUPlugin {
     # in the test environment
 }
 
-
 function before.cloudbaseinit.plugins.windows.ntpclient.NTPClientPlugin {
     It "w32time service should exist" {
         { Get-Service "w32time" -ErrorAction Stop } | Should -Not -Throw
@@ -265,6 +264,21 @@ function prepare.openstack {
         } catch {}
         try {
             & "$here/../bin/mkisofs.exe" -o "../cloudbase-init-config-drive.iso" -ignore-error -ldots -allow-lowercase -allow-multidot -l -publisher "cbsl" -quiet -J -r -V "config-2" "cloudbase-init-metadata" 2>&1
+        } catch {}
+        Mount-DiskImage -ImagePath (Resolve-Path "../cloudbase-init-config-drive.iso") | Out-Null
+        Get-PsDrive | Out-Null
+
+    popd
+}
+
+function prepare.nocloud {
+    pushd "$here/../$($env:CLOUD)"
+        try {
+            Dismount-DiskImage -ErrorAction SilentlyContinue (Resolve-Path "../cloudbase-init-config-drive.iso")
+            Remove-Item -Force -ErrorAction SilentlyContinue "../cloudbase-init-config-drive.iso"
+        } catch {}
+        try {
+            & "$here/../bin/mkisofs.exe" -o "../cloudbase-init-config-drive.iso" -ignore-error -ldots -allow-lowercase -allow-multidot -l -publisher "cbsl" -quiet -J -r -V "cidata" "cloudbase-init-metadata" 2>&1
         } catch {}
         Mount-DiskImage -ImagePath (Resolve-Path "../cloudbase-init-config-drive.iso") | Out-Null
         Get-PsDrive | Out-Null
