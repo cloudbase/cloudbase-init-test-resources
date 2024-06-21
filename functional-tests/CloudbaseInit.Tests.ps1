@@ -9,7 +9,8 @@ if ($ENV:TEST_ARCHITECTURE -eq "x86") {
     $REG_KEY_FOLDER = $REG_KEY_WOW_FOLDER
 }
 $global:CLOUDBASE_INIT_REGISTRY_PATH = "HKLM:\SOFTWARE\${REG_KEY_FOLDER}Cloudbase Solutions\Cloudbase-Init\b9517879-4e93-4a1a-9073-4ae0ddfac27c\Plugins"
-
+$global:CLOUDBASE_INIT_NET_NAME = "cbs_init_eth0"
+$global:CLOUDBASE_INIT_NET_STATIC_IP = "10.196.59.2"
 
 function before.cloudbaseinit.plugins.common.mtu.MTUPlugin {
     # NOOP
@@ -230,9 +231,24 @@ function after.cloudbaseinit.plugins.windows.winrmcertificateauth.ConfigWinRMCer
 }
 function before.cloudbaseinit.plugins.common.networkconfig.NetworkConfigPlugin {
 
+    It "a network adapter should not exist" {
+        {
+            # if the functional test has been already run before,
+            # we need to rename the net adapter name to a different name.
+            Rename-NetAdapter -Name $global:CLOUDBASE_INIT_NET_NAME -NewName "not_cbs_init0" -ErrorAction SilentlyContinue
+        } | Should -Not -Throw
+    }
+
 }
 function after.cloudbaseinit.plugins.common.networkconfig.NetworkConfigPlugin {
-
+    It "a network adapter should exist and have a proper name" {
+        {
+            Get-NetAdapter -Name $global:CLOUDBASE_INIT_NET_NAME
+            if (!($global:CLOUDBASE_INIT_NET_STATIC_IP -in (Get-NetIPAddress -InterfaceAlias $global:CLOUDBASE_INIT_NET_NAME).IPAddress)) {
+                throw "Failed to set ip address on net adapter"
+            }
+        } | Should -Not -Throw
+    }
 }
 
 function prepare.empty {
@@ -287,6 +303,38 @@ function after.cloudbaseinit.plugins.windows.bootconfig.BootStatusPolicyPlugin {
 
 function prepare.nocloud {
     pushd "$here/../$($env:CLOUD)"
+
+        # Use OpenVPN to create a TAP Windows Adapter to be configured.
+        # On Github Actions, we cannot use the existing network adapter for verifying the
+        # NetworkConfigPlugin, as resetting the same static network config breaks the worker
+        # connection to the Github Actions manager, and the action will lose context and
+        # timeout.
+        $openVpnUrl = "https://build.openvpn.net/downloads/releases/OpenVPN-2.5.10-I601-amd64.msi"
+        $wc = New-Object System.Net.WebClient
+        $msiFilePath = Join-Path $(pwd) "openvpn.msi"
+        $wc.DownloadFile($openVpnUrl, $msiFilePath)
+        cmd /c "msiexec.exe -i ${msiFilePath} /qn /norestart /l*v test.log"
+        if ($LASTEXITCODE) { throw "Failed to install openvpn" }
+
+        # Refresh the network adapter list to make sure it is properly updated (Windows quirk)
+        Get-NetAdapter | Out-Null
+        $adapter = Get-NetAdapter -InterfaceDescription "TAP-Windows Adapter V9" | Select-Object -First 1
+        if (!$adapter) { throw "Failed to find adapter"}
+
+        # Windows quirk to be able to set static IPs to disconnected network adapters
+        Set-ItemProperty -Path "HKLM:\\SYSTEM\CurrentControlSet\services\Tcpip\Parameters\Interfaces\$($adapter.DeviceID)" -Name EnableDHCP -Value 0
+
+        # A tap device gets created by default after installing OpenVPN.
+        # We'll update the network-config template with the according MAC address.
+        $currentMacAddress = $adapter.macaddress.Replace("-",":")
+        $networkTemplateFile = "cloudbase-init-metadata\network-config.template"
+        if (Test-path $networkTemplateFile) {
+            $networkTemplateFileContent = (Get-Content -Raw $networkTemplateFile)
+            $networkTemplateFileContent = $networkTemplateFileContent.Replace("REPLACE_MAC_ADDRESS", $currentMacAddress)
+            $networkTemplateFileContent | Set-Content "cloudbase-init-metadata\network-config" -Encoding Ascii
+            Write-Host $networkTemplateFileContent
+        }
+
         try {
             Dismount-DiskImage -ErrorAction SilentlyContinue (Resolve-Path "../cloudbase-init-config-drive.iso")
             Remove-Item -Force -ErrorAction SilentlyContinue "../cloudbase-init-config-drive.iso"
