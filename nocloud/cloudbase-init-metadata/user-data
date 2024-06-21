@@ -1,5 +1,40 @@
-#ps1
+#cloud-config
+groups:
+    -
+        windows:
+            - Admin
+    - cloud-users
 
-mkdir C:\helloworld
+users:
+    -
+        name: cloud-config-user
+        gecos: 'Created by cloudbase-init'
+        primary_group: cloud-users
+        groups: windows
 
-exit 0
+write_files:
+    -
+        encoding: b64
+        content: CiMgVGhpcyBmaWxlIGNvbnRyb2xzIHRoZSBzdGF0ZSBvZiBTRUxpbnV4
+        path: 'C:\test_file'
+        permissions: '0644'
+    -
+        content: "# Example ps1 file\necho 'test'\n"
+        path: 'C:\test_append.ps1'
+        permissions: '0644'
+    -
+        content: "added to file\n"
+        path: 'C:\test_append.ps1'
+        permissions: '0644'
+        append: true
+runcmd:
+    -
+        - dir
+        - 'c:\'
+    - 'mkdir c:\runcmd'
+ntp:
+    enabled: true
+    pools:
+        - 1.pool.ntp.org
+    servers:
+        - 0.pool.ntp.org

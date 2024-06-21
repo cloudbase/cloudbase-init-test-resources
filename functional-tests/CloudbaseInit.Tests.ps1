@@ -20,7 +20,6 @@ function after.cloudbaseinit.plugins.common.mtu.MTUPlugin {
     # in the test environment
 }
 
-
 function before.cloudbaseinit.plugins.windows.ntpclient.NTPClientPlugin {
     It "w32time service should exist" {
         { Get-Service "w32time" -ErrorAction Stop } | Should -Not -Throw
@@ -272,6 +271,35 @@ function prepare.openstack {
     popd
 }
 
+function before.cloudbaseinit.plugins.windows.bootconfig.BCDConfigPlugin {
+    # TBD
+}
+function after.cloudbaseinit.plugins.windows.bootconfig.BCDConfigPlugin {
+    # TBD
+}
+
+function before.cloudbaseinit.plugins.windows.bootconfig.BootStatusPolicyPlugin {
+    # TBD
+}
+function after.cloudbaseinit.plugins.windows.bootconfig.BootStatusPolicyPlugin {
+    # TBD
+}
+
+function prepare.nocloud {
+    pushd "$here/../$($env:CLOUD)"
+        try {
+            Dismount-DiskImage -ErrorAction SilentlyContinue (Resolve-Path "../cloudbase-init-config-drive.iso")
+            Remove-Item -Force -ErrorAction SilentlyContinue "../cloudbase-init-config-drive.iso"
+        } catch {}
+        try {
+            & "$here/../bin/mkisofs.exe" -o "../cloudbase-init-config-drive.iso" -ignore-error -ldots -allow-lowercase -allow-multidot -l -publisher "cbsl" -quiet -J -r -V "cidata" "cloudbase-init-metadata" 2>&1
+        } catch {}
+        Mount-DiskImage -ImagePath (Resolve-Path "../cloudbase-init-config-drive.iso") | Out-Null
+        Get-PsDrive | Out-Null
+
+    popd
+}
+
 BeforeDiscovery {
     $env:CLOUD | Should -Not -Be $null
     $metadataServiceConfigFile = Resolve-Path "$here/../$($env:CLOUD)/cloudbase-init.conf"
@@ -283,6 +311,12 @@ BeforeDiscovery {
 }
 
 Describe "TestVerifyBeforeAllPlugins" {
+    $env:CLOUD | Should -Not -Be $null
+    $metadataServiceConfigFile = Resolve-Path "$here/../$($env:CLOUD)/cloudbase-init.conf"
+    $pluginList = Get-IniFileValue -Path $metadataServiceConfigFile -Section "DEFAULT" `
+                                      -Key "plugins" `
+                                      -Default ""
+    $pluginList = $pluginList.Split(",")
     Context "Verify state before running plugin" -ForEach $pluginList {
         $plugin = $_
         if (!$plugin) {
@@ -305,6 +339,12 @@ Describe "TestVerifyBeforeAllPlugins" {
 }
 
 Describe "TestVerifyAfterAllPlugins" {
+    $env:CLOUD | Should -Not -Be $null
+    $metadataServiceConfigFile = Resolve-Path "$here/../$($env:CLOUD)/cloudbase-init.conf"
+    $pluginList = Get-IniFileValue -Path $metadataServiceConfigFile -Section "DEFAULT" `
+                                      -Key "plugins" `
+                                      -Default ""
+    $pluginList = $pluginList.Split(",")
     Context "Verify state after running plugin" -ForEach $pluginList {
         $plugin = $_
         if (!$plugin) {
