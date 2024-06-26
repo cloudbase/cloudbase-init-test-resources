@@ -301,36 +301,42 @@ function after.cloudbaseinit.plugins.windows.bootconfig.BootStatusPolicyPlugin {
     # TBD
 }
 
+function Prepare-OpenVPNTapAdapter {
+    # Use OpenVPN to create a TAP Windows Adapter to be configured.
+    # On Github Actions, we cannot use the existing network adapter for verifying the
+    # NetworkConfigPlugin, as resetting the same static network config breaks the worker
+    # connection to the Github Actions manager, and the action will lose context and
+    # timeout.
+    $openVpnUrl = "https://build.openvpn.net/downloads/releases/OpenVPN-2.5.10-I601-amd64.msi"
+    $wc = New-Object System.Net.WebClient
+    $msiFilePath = Join-Path $(pwd) "openvpn.msi"
+    $wc.DownloadFile($openVpnUrl, $msiFilePath)
+    cmd /c "msiexec.exe -i ${msiFilePath} /qn /norestart /l*v test.log" | Out-Null
+    if ($LASTEXITCODE) { throw "Failed to install openvpn" }
+
+    # Refresh the network adapter list to make sure it is properly updated (Windows quirk)
+    Get-NetAdapter | Out-Null
+    $adapter = Get-NetAdapter -InterfaceDescription "TAP-Windows Adapter V9" | Select-Object -First 1
+    if (!$adapter) { throw "Failed to find adapter"}
+
+    # Windows quirk to be able to set static IPs to disconnected network adapters
+    Set-ItemProperty -Path "HKLM:\\SYSTEM\CurrentControlSet\services\Tcpip\Parameters\Interfaces\$($adapter.DeviceID)" -Name EnableDHCP -Value 0 | Out-Null
+
+    # A tap device gets created by default after installing OpenVPN.
+    # We'll update the network-config template with the according MAC address.
+    $currentMacAddress = $adapter.macaddress.Replace("-",":")
+
+    return $currentMacAddress
+}
+
 function prepare.nocloud {
     pushd "$here/../$($env:CLOUD)"
 
-        # Use OpenVPN to create a TAP Windows Adapter to be configured.
-        # On Github Actions, we cannot use the existing network adapter for verifying the
-        # NetworkConfigPlugin, as resetting the same static network config breaks the worker
-        # connection to the Github Actions manager, and the action will lose context and
-        # timeout.
-        $openVpnUrl = "https://build.openvpn.net/downloads/releases/OpenVPN-2.5.10-I601-amd64.msi"
-        $wc = New-Object System.Net.WebClient
-        $msiFilePath = Join-Path $(pwd) "openvpn.msi"
-        $wc.DownloadFile($openVpnUrl, $msiFilePath)
-        cmd /c "msiexec.exe -i ${msiFilePath} /qn /norestart /l*v test.log"
-        if ($LASTEXITCODE) { throw "Failed to install openvpn" }
-
-        # Refresh the network adapter list to make sure it is properly updated (Windows quirk)
-        Get-NetAdapter | Out-Null
-        $adapter = Get-NetAdapter -InterfaceDescription "TAP-Windows Adapter V9" | Select-Object -First 1
-        if (!$adapter) { throw "Failed to find adapter"}
-
-        # Windows quirk to be able to set static IPs to disconnected network adapters
-        Set-ItemProperty -Path "HKLM:\\SYSTEM\CurrentControlSet\services\Tcpip\Parameters\Interfaces\$($adapter.DeviceID)" -Name EnableDHCP -Value 0
-
-        # A tap device gets created by default after installing OpenVPN.
-        # We'll update the network-config template with the according MAC address.
-        $currentMacAddress = $adapter.macaddress.Replace("-",":")
+        $openVpnTapAdapterMacAddress = Prepare-OpenVPNTapAdapter
         $networkTemplateFile = "cloudbase-init-metadata\network-config.template"
         if (Test-path $networkTemplateFile) {
             $networkTemplateFileContent = (Get-Content -Raw $networkTemplateFile)
-            $networkTemplateFileContent = $networkTemplateFileContent.Replace("REPLACE_MAC_ADDRESS", $currentMacAddress)
+            $networkTemplateFileContent = $networkTemplateFileContent.Replace("REPLACE_MAC_ADDRESS", $openVpnTapAdapterMacAddress)
             $networkTemplateFileContent | Set-Content "cloudbase-init-metadata\network-config" -Encoding Ascii
             Write-Host $networkTemplateFileContent
         }
@@ -345,6 +351,34 @@ function prepare.nocloud {
         Mount-DiskImage -ImagePath (Resolve-Path "../cloudbase-init-config-drive.iso") | Out-Null
         Get-PsDrive | Out-Null
 
+    popd
+}
+
+function prepare.vmwareguest {
+    pushd "$here/../$($env:CLOUD)"
+        $openVpnTapAdapterMacAddress = Prepare-OpenVPNTapAdapter
+        $rpcToolMockName = "mock-rpctool"
+        $rpcToolPyPath = (Resolve-Path ".\${rpcToolMockName}.py").Path
+        if (Test-path $rpcToolPyPath) {
+            $rpcToolPyContent = (Get-Content -Raw $rpcToolPyPath)
+            $rpcToolPyContent = $rpcToolPyContent.Replace("REPLACE_MAC_ADDRESS", $openVpnTapAdapterMacAddress)
+            $rpcToolPyContent | Set-Content $rpcToolPyPath -Encoding Ascii
+        }
+        # VmwareGuest service relies on a binary called rpctool.exe.
+        # This tool returns the metadata or userdata, so we mock it to be as close as
+        # possible to the real environment.
+        & pip.exe install pyinstaller
+        if ($LASTEXITCODE) {
+          throw "Failed to install pyinstaller"
+        }
+        & pyinstaller -F "${rpcToolPyPath}"
+        if ($LASTEXITCODE) {
+          throw "Failed to create rpctool.exe using pyinstaller"
+        }
+        $rpcToolPath = (Resolve-Path ".\dist\${rpcToolMockName}.exe").Path
+        $metadataServiceConfigFile = (Resolve-Path "cloudbase-init.conf").Path
+        Set-IniFileValue -Path $metadataServiceConfigFile -Section "vmwareguestinfo" `
+                                      -Key "vmware_rpctool_path" -Value $rpcToolPath
     popd
 }
 
