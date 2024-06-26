@@ -1,0 +1,12 @@
+config:
+- mac_address: REPLACE_MAC_ADDRESS
+  name: cbs_init_eth0
+  type: physical
+  subnets:
+    - address: 10.196.59.2/24
+      dns_nameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+      gateway: 10.196.59.1
+      type: static
+version: 1
