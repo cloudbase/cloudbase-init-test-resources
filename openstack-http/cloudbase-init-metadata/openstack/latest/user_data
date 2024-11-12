@@ -27,6 +27,14 @@ write_files:
         path: 'C:\test_append.ps1'
         permissions: '0644'
         append: true
+    -
+        content: |
+            ---
+            node_ip: '{{ ds.meta_data.local_ipv4 }}'
+        path: 'C:\run\node-config.yaml'
+        permissions: '0644'
+        append: true
+
 runcmd:
     -
         - dir
