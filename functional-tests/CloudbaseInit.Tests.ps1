@@ -257,21 +257,13 @@ function prepare.empty {
 
 function prepare.openstack {
     pushd "$here/../$($env:CLOUD)"
-        try {
-            # $ipconfigOut = $(ipconfig /all)
-            # Write-Host $ipconfigOut
-            $adapter = Get-NetAdapter -Physical -Name "Ethernet" | Select-Object -First 1
-            $currentIpAddress = ($adapter | Get-NetIPAddress -AddressFamily IPv4).IPAddress
-            $currentMacAddress = $adapter.macaddress.Replace("-",":")
-            $networkTemplateFile = "cloudbase-init-metadata\openstack\latest\network_data.json.template"
-            if (Test-path $networkTemplateFile) {
-                $networkTemplateFileContent = (Get-Content -Raw $networkTemplateFile)
-                $networkTemplateFileContent = $networkTemplateFileContent.Replace("REPLACE_MAC_ADDRESS", $currentMacAddress).Replace("REPLACE_IP_ADDRESS", $currentIpAddress)
-                $networkTemplateFileContent | Set-Content "cloudbase-init-metadata\openstack\latest\network_data.json" -Encoding Ascii
-                Write-Host $networkTemplateFileContent
-            }
-        } catch {
-            Write-Host $_
+        $openVpnTapAdapterMacAddress = Prepare-OpenVPNTapAdapter
+        $networkTemplateFile = "cloudbase-init-metadata/openstack/latest/network_data.json.template"
+        if (Test-path $networkTemplateFile) {
+            $networkTemplateFileContent = (Get-Content -Raw $networkTemplateFile)
+            $networkTemplateFileContent = $networkTemplateFileContent.Replace("REPLACE_MAC_ADDRESS", $openVpnTapAdapterMacAddress)
+            $networkTemplateFileContent | Set-Content "cloudbase-init-metadata/openstack/latest/network_data.json" -Encoding Ascii
+            Write-Host $networkTemplateFileContent
         }
 
         try {
@@ -285,6 +277,10 @@ function prepare.openstack {
         Get-PsDrive | Out-Null
 
     popd
+}
+
+function prepare.openstack-http {
+    prepare.openstack
 }
 
 function before.cloudbaseinit.plugins.windows.bootconfig.BCDConfigPlugin {
