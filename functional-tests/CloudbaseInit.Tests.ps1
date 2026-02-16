@@ -350,6 +350,10 @@ function prepare.nocloud {
     popd
 }
 
+function prepare.proxmox {
+    & prepare.nocloud
+}
+
 function prepare.vmwareguest {
     pushd "$here/../$($env:CLOUD)"
         $openVpnTapAdapterMacAddress = Prepare-OpenVPNTapAdapter

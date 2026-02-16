@@ -1,0 +1,11 @@
+#cloud-config
+hostname: avladu-test-proxmox
+manage_etc_hosts: true
+fqdn: avladu-test-proxmox.maas.local
+user: Admin2
+password: Passw0rd12354!!
+chpasswd:
+  expire: False
+users:
+  - default
+package_upgrade: true
