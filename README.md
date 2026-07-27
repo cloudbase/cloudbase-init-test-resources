@@ -46,3 +46,32 @@ if ($errors -or !$pluginExecution) {
 # These tests make sure that the environment is changed according to the specifications
 Invoke-Pester test-resources/functional-tests -Output Detailed -FullNameFilter TestVerifyAfterAllPlugins
 ```
+
+### Oracle Cloud IMDSv2
+
+The `oracle` fixture runs a local metadata server on `127.0.0.1:18080` and
+serves example OCI metadata from `oracle/metadata/opc/v2`. The server returns
+HTTP 401 unless every request includes the IMDSv2 header:
+
+```text
+Authorization: Bearer Oracle
+```
+
+The precondition tests explicitly verify that a request without this header is
+rejected with HTTP 401 and that a request with the header returns the expected
+instance ID. The end-to-end execution then verifies that `OracleCloudService`
+adds the header itself and successfully processes the returned user data.
+
+Run it through the Cloudbase-Init functional-test workflow with:
+
+```powershell
+$ENV:CLOUD = "oracle"
+$ENV:TEST_ARCHITECTURE = "x64"
+Invoke-Pester functional-tests -Output Detailed -FullNameFilter TestVerifyBeforeAllPlugins
+
+& cloudbase-init.exe `
+  --noreset_service_password `
+  --config-file ./oracle/cloudbase-init.conf
+
+Invoke-Pester functional-tests -Output Detailed -FullNameFilter TestVerifyAfterAllPlugins
+```
