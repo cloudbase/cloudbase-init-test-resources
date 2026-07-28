@@ -96,6 +96,54 @@ function after.cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin {
 }
 
 function before.cloudbaseinit.plugins.common.userdata.UserDataPlugin {
+    if ($env:CLOUD -eq "oracle") {
+        It "OCI IMDSv2 rejects requests without the Oracle authorization header" {
+            $statusCode = $null
+            try {
+                $response = Invoke-WebRequest `
+                    -Uri "http://127.0.0.1:18080/opc/v2/instance/id" `
+                    -UseBasicParsing `
+                    -ErrorAction Stop
+                $statusCode = [int]$response.StatusCode
+            } catch {
+                if (!$_.Exception.Response) {
+                    throw
+                }
+                $statusCode = [int]$_.Exception.Response.StatusCode
+            }
+
+            $statusCode | Should -Be 401
+        }
+
+        It "OCI IMDSv2 accepts requests with the Oracle authorization header" {
+            $response = Invoke-WebRequest `
+                -Uri "http://127.0.0.1:18080/opc/v2/instance/id" `
+                -Headers @{ Authorization = "Bearer Oracle" } `
+                -UseBasicParsing `
+                -ErrorAction Stop
+
+            [int]$response.StatusCode | Should -Be 200
+            # Windows PowerShell 5.1 returns application/octet-stream response
+            # bodies as Byte[]; newer PowerShell versions can return a String.
+            $content = if ($response.Content -is [byte[]]) {
+                [System.Text.Encoding]::UTF8.GetString($response.Content)
+            } else {
+                [string]$response.Content
+            }
+            $content.Trim() |
+                Should -BeExactly "b9517879-4e93-4a1a-9073-4ae0ddfac27c"
+        }
+
+        It "Oracle IMDSv2 user data has a clean environment" {
+            {
+                Get-Content -Raw `
+                    -Path "C:\oracle-imdsv2-functional-test.txt" `
+                    -ErrorAction Stop
+            } | Should -Throw
+        }
+        return
+    }
+
     It "UserDataPlugin has a clean environment" {
         {
             $out = net.exe localgroup "windows" 2>&1
@@ -124,6 +172,17 @@ function before.cloudbaseinit.plugins.common.userdata.UserDataPlugin {
     }
 }
 function after.cloudbaseinit.plugins.common.userdata.UserDataPlugin {
+    if ($env:CLOUD -eq "oracle") {
+        It "Oracle IMDSv2 user data was decoded and processed" {
+            $content = Get-Content -Raw `
+                -Path "C:\oracle-imdsv2-functional-test.txt" `
+                -ErrorAction Stop
+            $content.Trim() |
+                Should -BeExactly "Oracle Cloud IMDSv2 functional test passed"
+        }
+        return
+    }
+
     It "UserDataPlugin created windows group" {
         {
             $out = net.exe localgroup "windows" 2>&1
@@ -281,6 +340,36 @@ function prepare.openstack {
 
 function prepare.openstack-http {
     prepare.openstack
+}
+
+function prepare.oracle {
+    $metadataUrl = "http://127.0.0.1:18080/opc/v2/instance/id"
+    $headers = @{ Authorization = "Bearer Oracle" }
+
+    try {
+        Invoke-WebRequest -Uri $metadataUrl -Headers $headers `
+            -UseBasicParsing -ErrorAction Stop | Out-Null
+        return
+    } catch {}
+
+    $serverScript = (
+        Resolve-Path "$here/../oracle/mock_metadata_server.py"
+    ).Path
+    Start-Process -FilePath "python.exe" `
+        -ArgumentList "`"$serverScript`"" `
+        -WindowStyle Hidden | Out-Null
+
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        try {
+            Invoke-WebRequest -Uri $metadataUrl -Headers $headers `
+                -UseBasicParsing -ErrorAction Stop | Out-Null
+            return
+        } catch {
+            Start-Sleep -Milliseconds 250
+        }
+    }
+
+    throw "Oracle metadata test server did not become ready"
 }
 
 function before.cloudbaseinit.plugins.windows.bootconfig.BCDConfigPlugin {
