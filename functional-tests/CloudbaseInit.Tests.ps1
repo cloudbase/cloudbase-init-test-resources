@@ -467,6 +467,30 @@ function prepare.vmwareguest {
     popd
 }
 
+function verify.empty {
+    # NOOP
+}
+
+function verify.openstack {
+    # NOOP
+}
+
+function verify.openstack-http {
+    # NOOP
+}
+
+function verify.oracle {
+    # NOOP
+}
+
+function verify.nocloud {
+    # NOOP
+}
+
+function verify.vmwareguest {
+    # NOOP
+}
+
 BeforeDiscovery {
     $env:CLOUD | Should -Not -Be $null
     $metadataServiceConfigFile = Resolve-Path "$here/../$($env:CLOUD)/cloudbase-init.conf"
@@ -541,5 +565,9 @@ Describe "TestVerifyAfterAllPlugins" {
                 $propertyValue | Should -BeExactly $expectedValue
             }
         }
+    }
+
+    Context "Verify state after running metadata service" {
+        & "verify.$($ENV:CLOUD)"
     }
 }
