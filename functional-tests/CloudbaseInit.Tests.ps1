@@ -472,7 +472,22 @@ function verify.empty {
 }
 
 function verify.openstack {
-    # NOOP
+    It "ConfigDrive metadata copy should be removed" {
+        # The ConfigDrive is copied to a tmp* folder in %TEMP%, which must be
+        # removed after the metadata service has run.
+        $metadataPath = (Resolve-Path "$here/../$($env:CLOUD)/cloudbase-init-metadata").Path
+        $metadataFiles = Get-ChildItem -Recurse -File -Path $metadataPath | ForEach-Object {
+            $_.FullName.Substring($metadataPath.Length + 1)
+        }
+        $metadataCopies = Get-ChildItem -Directory -Path $env:TEMP -Filter "tmp*" | Where-Object {
+            $copyPath = $_.FullName
+            $missingFiles = $metadataFiles | Where-Object {
+                !(Test-Path -LiteralPath (Join-Path $copyPath $_))
+            }
+            !$missingFiles
+        }
+        $metadataCopies.FullName | Should -BeNullOrEmpty
+    }
 }
 
 function verify.openstack-http {
@@ -484,7 +499,8 @@ function verify.oracle {
 }
 
 function verify.nocloud {
-    # NOOP
+    # NoCloudConfigDriveService copies the ConfigDrive in the same way
+    verify.openstack
 }
 
 function verify.vmwareguest {
